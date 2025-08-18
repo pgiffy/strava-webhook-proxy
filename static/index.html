@@ -91,7 +91,7 @@
     </div>
 
     <script>
-        function connectToStrava() {
+        async function connectToStrava() {
             // Get client ID from environment or prompt user
             const clientId = prompt('Enter your Strava Client ID:', '');
             if (!clientId) {
@@ -100,7 +100,7 @@
             }
             
             const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
-            const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=read,activity:read`;
+            const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=activity:read_all`;
             
             window.location.href = authUrl;
         }
