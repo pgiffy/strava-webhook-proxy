@@ -133,16 +133,22 @@
             statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
         }
 
-        // Handle OAuth callback
         const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+        const success = urlParams.get('success');
+        const athleteId = urlParams.get('athlete_id');
         const error = urlParams.get('error');
 
         if (error) {
-            showStatus(`OAuth error: ${error}`, 'error');
-        } else if (code) {
-            showStatus(`Authorization successful! Code: ${code}`, 'success');
-            // Clear the URL parameters
+            const errorMessages = {
+                'token_exchange_failed': 'Failed to exchange authorization code for access token',
+                'token_parse_failed': 'Failed to parse token response from Strava'
+            };
+            showStatus(`OAuth error: ${errorMessages[error] || error}`, 'error');
+        } else if (success === 'authorized' && athleteId) {
+            showStatus(`Authorization successful! Athlete ID: ${athleteId}. Webhooks will now receive events for this user.`, 'success');
+        }
+        
+        if (success || error) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     </script>

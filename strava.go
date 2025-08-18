@@ -68,15 +68,67 @@ func getWebhookVerifyToken() string {
 	return "STRAVA_WEBHOOK_VERIFY_TOKEN"
 }
 
+type StravaTokenResponse struct {
+	TokenType    string `json:"token_type"`
+	ExpiresAt    int64  `json:"expires_at"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+	Athlete      struct {
+		ID int64 `json:"id"`
+	} `json:"athlete"`
+}
+
 func stravaAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		http.Error(w, "Authorization code not provided", http.StatusBadRequest)
 		return
 	}
-	
-	// Redirect back to home page with success
-	http.Redirect(w, r, "/?code="+code, http.StatusFound)
+
+	// Exchange code for access token
+	config := getStravaConfig()
+	tokenURL := "https://www.strava.com/oauth/token"
+
+	requestBody := map[string]string{
+		"client_id":     config.ClientID,
+		"client_secret": config.ClientSecret,
+		"code":          code,
+		"grant_type":    "authorization_code",
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		log.Printf("Failed to marshal token request: %v", err)
+		http.Redirect(w, r, "/?error=token_exchange_failed", http.StatusFound)
+		return
+	}
+
+	resp, err := http.Post(tokenURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Printf("Failed to exchange token: %v", err)
+		http.Redirect(w, r, "/?error=token_exchange_failed", http.StatusFound)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("Token exchange failed: %d - %s", resp.StatusCode, string(bodyBytes))
+		http.Redirect(w, r, "/?error=token_exchange_failed", http.StatusFound)
+		return
+	}
+
+	var tokenResp StravaTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		log.Printf("Failed to parse token response: %v", err)
+		http.Redirect(w, r, "/?error=token_parse_failed", http.StatusFound)
+		return
+	}
+
+	log.Printf("Successfully authorized athlete ID: %d", tokenResp.Athlete.ID)
+
+	http.Redirect(w, r, fmt.Sprintf("/?success=authorized&athlete_id=%d", tokenResp.Athlete.ID), http.StatusFound)
 }
 
 func stravaWebhookGetHandler(w http.ResponseWriter, r *http.Request) {
