@@ -25,7 +25,7 @@ func main() {
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 	router.HandleFunc("/", homeHandler).Methods("GET")
 	router.HandleFunc("/sendToWebhook", testSendToWebhook).Methods("POST")
-	
+
 	// Strava webhook endpoints
 	router.HandleFunc("/webhook", stravaWebhookGetHandler).Methods("GET")
 	router.HandleFunc("/webhook", stravaWebhookPostHandler).Methods("POST")

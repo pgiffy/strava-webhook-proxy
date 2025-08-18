@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -66,6 +67,20 @@ func getWebhookVerifyToken() string {
 		return token
 	}
 	return "STRAVA_WEBHOOK_VERIFY_TOKEN"
+}
+
+func stravaAuthURLHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ClientID    string `json:"client_id"`
+		RedirectURI string `json:"redirect_uri"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	authURL := fmt.Sprintf("https://www.strava.com/oauth/authorize?client_id=%s&response_type=code&redirect_uri=%s&approval_prompt=force&scope=read,activity:read",
+		req.ClientID, url.QueryEscape(req.RedirectURI))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"auth_url": authURL})
 }
 
 func stravaWebhookGetHandler(w http.ResponseWriter, r *http.Request) {
