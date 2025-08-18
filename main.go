@@ -30,6 +30,7 @@ func main() {
 	router.HandleFunc("/webhook", stravaWebhookGetHandler).Methods("GET")
 	router.HandleFunc("/webhook", stravaWebhookPostHandler).Methods("POST")
 	router.HandleFunc("/create-subscription", createWebhookSubscription).Methods("POST")
+	router.HandleFunc("/auth/callback", stravaAuthCallbackHandler).Methods("GET")
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 

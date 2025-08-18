@@ -68,6 +68,17 @@ func getWebhookVerifyToken() string {
 	return "STRAVA_WEBHOOK_VERIFY_TOKEN"
 }
 
+func stravaAuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "Authorization code not provided", http.StatusBadRequest)
+		return
+	}
+	
+	// Redirect back to home page with success
+	http.Redirect(w, r, "/?code="+code, http.StatusFound)
+}
+
 func stravaWebhookGetHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received GET request from %s", r.RemoteAddr)
 	handleWebhookVerification(w, r)
