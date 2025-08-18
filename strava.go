@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 )
@@ -68,7 +67,6 @@ func getWebhookVerifyToken() string {
 	}
 	return "STRAVA_WEBHOOK_VERIFY_TOKEN"
 }
-
 
 func stravaWebhookGetHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received GET request from %s", r.RemoteAddr)
