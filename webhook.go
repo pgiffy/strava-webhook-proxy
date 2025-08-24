@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 )
 
 type WebhookData struct {
 	Event string `json:"event"`
 }
 
-func testSendToWebhook(writer http.ResponseWriter, request *http.Request) {
+func manuallySendToWebhook(writer http.ResponseWriter, request *http.Request) {
 	var requestData struct {
 		URL     string `json:"url"`
 		Content string `json:"content"`
@@ -47,7 +48,23 @@ func sendToWebhook(url string, content string) {
 		log.Printf("unexpected error %v", err)
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Printf("unexpected error creating request %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	authHeaderName := os.Getenv("AUTH_HEADER_NAME")
+	if authHeaderName != "" {
+		authToken := os.Getenv("AUTH_HEADER_TOKEN")
+		if authToken != "" {
+			req.Header.Set(authHeaderName, authToken)
+		}
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("unexpected error %v", err)
 		return

@@ -24,7 +24,7 @@ func main() {
 	router := mux.NewRouter()
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 	router.HandleFunc("/", homeHandler).Methods("GET")
-	router.HandleFunc("/sendToWebhook", testSendToWebhook).Methods("POST")
+	router.HandleFunc("/sendToWebhook", manuallySendToWebhook).Methods("POST")
 
 	// Strava webhook endpoints
 	router.HandleFunc("/webhook", stravaWebhookGetHandler).Methods("GET")

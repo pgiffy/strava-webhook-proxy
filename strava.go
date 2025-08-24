@@ -20,6 +20,7 @@ type WebhookSubscription struct {
 	ID int `json:"id"`
 }
 
+// TODO: setup struct so that it can have all the values
 type WebhookEvent struct {
 	ObjectType     string                 `json:"object_type"`
 	ObjectID       int64                  `json:"object_id"`
