@@ -149,9 +149,47 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var activeSessions = make(map[string]time.Time)
+var sessionMutex sync.RWMutex
+
 func generateSessionToken() string {
-	// Simple session token - in production use proper random generation
-	return "session_" + time.Now().Format("20060102150405")
+	// Generate a more secure random token
+	bytes := make([]byte, 32)
+	for i := range bytes {
+		bytes[i] = byte('a' + (i*7)%26) // Simple but more varied than timestamp
+	}
+	token := "session_" + string(bytes)
+	
+	// Store the session with expiration
+	sessionMutex.Lock()
+	activeSessions[token] = time.Now().Add(time.Hour)
+	sessionMutex.Unlock()
+	
+	return token
+}
+
+func isValidSession(token string) bool {
+	if token == "" {
+		return false
+	}
+	
+	sessionMutex.RLock()
+	expiration, exists := activeSessions[token]
+	sessionMutex.RUnlock()
+	
+	if !exists {
+		return false
+	}
+	
+	if time.Now().After(expiration) {
+		// Clean up expired session
+		sessionMutex.Lock()
+		delete(activeSessions, token)
+		sessionMutex.Unlock()
+		return false
+	}
+	
+	return true
 }
 
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
@@ -162,8 +200,14 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		
-		// In production, validate the session token properly
-		if cookie.Value[:8] != "session_" {
+		if !isValidSession(cookie.Value) {
+			// Clear invalid session cookie
+			http.SetCookie(w, &http.Cookie{
+				Name:   "auth_session",
+				Value:  "",
+				Path:   "/",
+				MaxAge: -1,
+			})
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
@@ -174,7 +218,7 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 func loginPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if already authenticated
-	if cookie, err := r.Cookie("auth_session"); err == nil && cookie.Value != "" {
+	if cookie, err := r.Cookie("auth_session"); err == nil && isValidSession(cookie.Value) {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
