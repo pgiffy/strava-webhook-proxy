@@ -23,14 +23,20 @@ func getPort() string {
 func main() {
 	router := mux.NewRouter()
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
-	router.HandleFunc("/", homeHandler).Methods("GET")
-	router.HandleFunc("/sendToWebhook", manuallySendToWebhook).Methods("POST")
+	
+	// Authentication routes (no auth required)
+	router.HandleFunc("/login", loginPageHandler).Methods("GET")
+	router.HandleFunc("/auth", authHandler).Methods("POST")
+	
+	// Protected routes (auth required)
+	router.HandleFunc("/", authMiddleware(homeHandler)).Methods("GET")
+	router.HandleFunc("/sendToWebhook", authMiddleware(manuallySendToWebhook)).Methods("POST")
+	router.HandleFunc("/create-subscription", authMiddleware(createWebhookSubscription)).Methods("POST")
+	router.HandleFunc("/auth/callback", authMiddleware(stravaAuthCallbackHandler)).Methods("GET")
 
-	// Strava webhook endpoints
+	// Strava webhook endpoints (no auth required - these are called by Strava)
 	router.HandleFunc("/webhook", stravaWebhookGetHandler).Methods("GET")
 	router.HandleFunc("/webhook", stravaWebhookPostHandler).Methods("POST")
-	router.HandleFunc("/create-subscription", createWebhookSubscription).Methods("POST")
-	router.HandleFunc("/auth/callback", stravaAuthCallbackHandler).Methods("GET")
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 

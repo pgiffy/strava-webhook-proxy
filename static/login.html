@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Strava Webhook Proxy</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            color: #fc4c02;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+        }
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="password"]:focus {
+            border-color: #fc4c02;
+            outline: none;
+        }
+        .login-btn {
+            background-color: #fc4c02;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .login-btn:hover {
+            background-color: #e63900;
+        }
+        .login-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        .attempts-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ffeaa7;
+            font-size: 14px;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #bee5eb;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>🔐 Login</h1>
+        
+        <div class="info">
+            <strong>Access Required:</strong> Enter your UI authentication token to access the Strava Webhook Proxy interface.
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="token">Authentication Token:</label>
+                <input type="password" id="token" name="token" required placeholder="Enter your UI_AUTH_TOKEN">
+            </div>
+            
+            <div id="error-message" class="error" style="display: none;"></div>
+            <div id="attempts-warning" class="attempts-warning" style="display: none;"></div>
+            
+            <button type="submit" class="login-btn" id="loginBtn">Login</button>
+        </form>
+    </div>
+
+    <script>
+        let failedAttempts = 0;
+        const maxAttempts = 3;
+        
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const token = document.getElementById('token').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('error-message');
+            const warningDiv = document.getElementById('attempts-warning');
+            
+            if (!token.trim()) {
+                showError('Please enter your authentication token');
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
+            try {
+                const response = await fetch('/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: token })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.status === 'success') {
+                    // Clear any error messages
+                    hideError();
+                    hideWarning();
+                    
+                    // Redirect to main page
+                    window.location.href = '/';
+                } else {
+                    failedAttempts++;
+                    
+                    if (response.status === 429) {
+                        showError('Too many failed attempts. Please try again later.');
+                        loginBtn.disabled = true;
+                        return;
+                    }
+                    
+                    const remainingAttempts = maxAttempts - failedAttempts;
+                    
+                    if (remainingAttempts > 0) {
+                        showError(result.message || 'Invalid authentication token');
+                        showWarning(`${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining`);
+                    } else {
+                        showError('Maximum attempts exceeded. Please try again later.');
+                        loginBtn.disabled = true;
+                    }
+                    
+                    // Clear the password field
+                    document.getElementById('token').value = '';
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+            } finally {
+                if (!loginBtn.disabled) {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
+                }
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error-message').style.display = 'none';
+        }
+        
+        function showWarning(message) {
+            const warningDiv = document.getElementById('attempts-warning');
+            warningDiv.textContent = message;
+            warningDiv.style.display = 'block';
+        }
+        
+        function hideWarning() {
+            document.getElementById('attempts-warning').style.display = 'none';
+        }
+        
+        // Focus on the token input when page loads
+        window.addEventListener('load', function() {
+            document.getElementById('token').focus();
+        });
+        
+        // Handle Enter key submission
+        document.getElementById('token').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

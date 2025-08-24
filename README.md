@@ -39,6 +39,7 @@ A Go-based proxy server that facilitates Strava webhook integration by providing
 | `STRAVA_WEBHOOK_VERIFY_TOKEN` | Custom verification token for webhooks | `STRAVA_WEBHOOK_VERIFY_TOKEN` |
 | `AUTH_HEADER_NAME` | Header name for authentication (when forwarding) | None |
 | `AUTH_HEADER_TOKEN` | Authentication token to include in forwarded requests | None |
+| `UI_AUTH_TOKEN` | Required token for accessing the web interface | `default_token` |
 
 ### Example .env file
 
@@ -51,12 +52,15 @@ PORT=8080
 STRAVA_WEBHOOK_VERIFY_TOKEN=your_verify_token
 AUTH_HEADER_NAME=Authorization
 AUTH_HEADER_TOKEN=your_token_here
+UI_AUTH_TOKEN=your_secure_ui_password
 ```
 
 ## API Endpoints
 
 ### Web Interface
-- `GET /` - Main web interface for managing Strava connections
+- `GET /login` - Authentication page for UI access
+- `POST /auth` - Authentication endpoint for login validation
+- `GET /` - Main web interface for managing Strava connections (requires authentication)
 
 ### OAuth Flow
 - `GET /auth/callback` - Handles OAuth callback from Strava
@@ -92,6 +96,28 @@ AUTH_HEADER_TOKEN=your-secret-key
 ```
 
 This will add the header `X-API-Key: your-secret-key` to all forwarded webhook requests.
+
+## UI Authentication
+
+The web interface is protected by token-based authentication to prevent unauthorized access.
+
+### Features
+- **Token Authentication**: Requires `UI_AUTH_TOKEN` to access the web interface
+- **Rate Limiting**: Maximum of 3 login attempts per IP address
+- **Automatic Blocking**: IPs are blocked for 15 minutes after 3 failed attempts
+- **Session Management**: Successful login creates a session cookie valid for 1 hour
+
+### Access Flow
+1. Navigate to your server URL (e.g., `http://localhost:8080`)
+2. You'll be redirected to `/login` if not authenticated
+3. Enter your `UI_AUTH_TOKEN` value
+4. Upon successful authentication, you'll be redirected to the main interface
+
+### Security Notes
+- Set a strong, unique value for `UI_AUTH_TOKEN`
+- The login page shows remaining attempts after failed logins
+- Session cookies are HTTP-only for security
+- All protected endpoints require authentication
 
 ## Development
 
